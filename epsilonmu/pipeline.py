@@ -1,0 +1,89 @@
+"""Inspect, observe and verify a script's explicit or recovered evidence."""
+
+import json
+from dataclasses import dataclass
+from pathlib import Path
+
+from .analysis import Analysis, inspect_file
+from .execution import RunResult
+from .observation import Observation, Provenance, observe_file
+from .knowledge import evaluate_rules
+from .verification import (CheckResult, Status, check_angular_momentum,
+                           check_convergence, check_energy_conservation,
+                           check_linear_momentum, check_stability)
+
+PREFIX = 'EPSILONMU_JSON:'
+
+
+@dataclass(frozen=True)
+class VerificationReport:
+    analysis: Analysis
+    run: RunResult
+    checks: tuple[CheckResult, ...]
+    status: Status
+    observations: tuple[Observation, ...] = ()
+
+
+def verify_file(path: str | Path, timeout: float = 10) -> VerificationReport:
+    analysis = inspect_file(path)
+    observed = observe_file(path, timeout)
+    run = observed.run
+    checks: list[CheckResult] = []
+    if run.timed_out:
+        checks.append(CheckResult('execution', Status.FAIL, 'Execution timed out'))
+    elif run.exit_code != 0:
+        checks.append(CheckResult('execution', Status.FAIL, f'Process exited {run.exit_code}: {run.stderr[-500:]}'))
+    else:
+        lines = [line[len(PREFIX):] for line in run.stdout.splitlines() if line.startswith(PREFIX)]
+        if lines:
+            try:
+                data = json.loads(lines[-1])
+                if not isinstance(data, dict):
+                    raise ValueError('Expected a JSON object')
+                if 'states' in data:
+                    checks.append(check_stability(data['states']))
+                if 'kinetic' in data and 'potential' in data:
+                    checks.append(check_energy_conservation(data['kinetic'], data['potential']))
+                if 'linear_momentum' in data:
+                    checks.append(check_linear_momentum(data['linear_momentum']))
+                if 'angular_momentum' in data:
+                    checks.append(check_angular_momentum(data['angular_momentum']))
+                if 'timesteps' in data and 'observables' in data:
+                    checks.append(check_convergence(data['timesteps'], data['observables']))
+                for item in data.get('constraints', []):
+                    value, lower, upper = item['value'], item.get('minimum'), item.get('maximum')
+                    passed = (lower is None or value >= lower) and (upper is None or value <= upper)
+                    checks.append(CheckResult(item.get('name', 'constraint'), Status.PASS if passed else Status.FAIL,
+                                              f'Value {value}; bounds [{lower}, {upper}]'))
+                if not checks:
+                    checks.append(CheckResult('evidence', Status.UNKNOWN, 'No recognized verification fields'))
+            except (ValueError, TypeError, KeyError) as exc:
+                checks.append(CheckResult('evidence', Status.FAIL, f'Invalid result data: {exc}'))
+        else:
+            series = [item for item in observed.observations
+                      if item.provenance == Provenance.INSTRUMENTED and len(item.values) >= 2]
+            if series:
+                from math import isfinite
+                finite = all(isfinite(value) for item in series for value in item.values)
+                checks.append(CheckResult('finite states', Status.PASS if finite else Status.FAIL,
+                                          f'{len(series)} recovered numeric series checked for finiteness'))
+                by_name = {item.name.lower(): item for item in series}
+                kinetic = by_name.get('kinetic') or by_name.get('kinetic_energy')
+                potential = by_name.get('potential') or by_name.get('potential_energy')
+                if kinetic and potential:
+                    energy = check_energy_conservation(kinetic.values, potential.values)
+                    if energy.status == Status.FAIL and analysis.domain not in {'harmonic oscillator', 'orbital mechanics'}:
+                        energy = CheckResult(energy.name, Status.WARNING,
+                                             energy.reason + '; conservation was not established for this model',
+                                             energy.metrics)
+                    checks.append(energy)
+                momentum = by_name.get('linear_momentum')
+                if momentum:
+                    checks.append(check_linear_momentum(momentum.values))
+            if not checks:
+                checks.append(CheckResult('evidence', Status.UNKNOWN, 'No checkable numeric series recovered'))
+        checks.extend(evaluate_rules(observed.observations, context=observed.explicit_data))
+    status = (Status.FAIL if any(c.status == Status.FAIL for c in checks) else
+              Status.WARNING if any(c.status == Status.WARNING for c in checks) else
+              Status.PASS if any(c.status == Status.PASS for c in checks) else Status.UNKNOWN)
+    return VerificationReport(analysis, run, tuple(checks), status, observed.observations)
