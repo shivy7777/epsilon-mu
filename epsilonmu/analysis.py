@@ -4,6 +4,10 @@ import ast
 from dataclasses import dataclass
 from pathlib import Path
 
+from .context import SourceContext, extract_context
+from .roles import Binding, infer_roles
+from .relationships import Relationship, DependencyGraph, build_graph, extract_relationships
+
 
 @dataclass(frozen=True)
 class Analysis:
@@ -13,6 +17,11 @@ class Analysis:
     functions: tuple[str, ...]
     domain: str
     classification: 'Classification'
+    relationships: tuple[Relationship, ...] = ()
+    graph: DependencyGraph = DependencyGraph(())
+    context: SourceContext = SourceContext((), ())
+    roles: tuple[Binding, ...] = ()
+    radial_checks: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -20,6 +29,7 @@ class Classification:
     path: tuple[str, ...]
     confidence: float
     evidence: tuple[str, ...]
+    assumptions: tuple[str, ...] = ()
 
 
 def _names(node: ast.AST) -> set[str]:
@@ -111,9 +121,32 @@ def inspect_source(source: str) -> Analysis:
     solver = 'solve_ivp' if any(isinstance(c.func, (ast.Name, ast.Attribute)) and
         (c.func.id if isinstance(c.func, ast.Name) else c.func.attr) == 'solve_ivp' for c in calls) else 'custom/unknown'
     words = names | {f.lower() for f in functions}
+    relationships = extract_relationships(source)
+    graph = build_graph(relationships)
+    context = extract_context(source)
     classification = classify(tree, words, solver)
+    if 'newtonian_gravity' in context.labels:
+        radial = [item.target for item in relationships if item.expression.op == 'pow'
+                  and item.expression.value == 1 / 2 and item.expression.args[0].op == 'add']
+        force = [item.target for item in relationships if any(radius in item.dependencies for radius in radial)
+                 and set(item.dependencies) & {'G', 'gravitational_constant'}]
+        acceleration = [item.target for item in relationships if any(f in item.dependencies for f in force)
+                        and any(radius in item.dependencies for radius in radial)]
+        if any(graph.path(radius, f) and graph.path(f, a)
+               for radius in radial for f in force for a in acceleration):
+            classification = Classification(('physics', 'mechanics', 'orbital mechanics'), 0.82,
+                                            ('declared Newtonian gravity context', 'radius-to-force-to-acceleration dependency'),
+                                            ('two-body Newtonian model intended',))
+    roles, model, radial_checks = infer_roles(tree, relationships, context.labels)
+    if model:
+        path = ('physics', 'mechanics') if model == 'mechanics' else ('physics','mechanics',model)
+        evidence = ('coupled state updates', 'common timestep in successive derivative updates')
+        if model == 'harmonic oscillator':
+            evidence += ('position-dependent restoring law or declared oscillator intent',)
+        classification = Classification(path, 0.82, evidence)
     domain = classification.path[-1] if classification.path else 'unknown'
-    return Analysis(tuple(sorted(imports)), solver, timestep, tuple(sorted(functions)), domain, classification)
+    return Analysis(tuple(sorted(imports)), solver, timestep, tuple(sorted(functions)), domain,
+                    classification, relationships, graph, context, roles, radial_checks)
 
 
 def inspect_file(path: str | Path) -> Analysis:

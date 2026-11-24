@@ -11,6 +11,7 @@ class Status(str, Enum):
     FAIL = 'FAIL'
     WARNING = 'WARNING'
     UNKNOWN = 'UNKNOWN'
+    NOT_APPLICABLE = 'NOT_APPLICABLE'
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,7 @@ class CheckResult:
     status: Status
     reason: str
     metrics: dict[str, float] = field(default_factory=dict)
+    category: str = 'numerical'
 
 
 def check_conservation(values: Sequence[float], name: str, tolerance: float = 0.01) -> CheckResult:
