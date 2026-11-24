@@ -1,3 +1,13 @@
+# 0.5.1.dev0
+
+Independent revalidation of this experimental checkpoint passed all 111 public tests. Of seven established synthetic controls, the renamed reversed spring improved from INCONCLUSIVE to FAILED and the other six verdicts held. Independent loopback tests observed zero, one, and two requests when initial approval was denied, retry approval was denied, and both attempts were approved, respectively. The evaluation used a mock planner and assessed restoring direction only in the renamed case. Live-model reasoning, generalization to unseen simulations, and production security remain unvalidated.
+
+Each outbound attempt requires a fresh destination and payload approval. Agent reports distinguish initial observations and checks, contextual reference comparisons, model predictions, and new refinement measurements. The oscillator verifier can check a resolved linear acceleration slope independently of variable names. Reports list checked and unverified registered relationships.
+
+# 0.5.0.dev0
+
+Added opt-in model-assisted scientific investigation with a fixed tool registry, approved actions, evidence-linked predictions and bounded timestep experiments. Deterministic debug remains the default.
+
 # 0.4.0.dev0
 
 Hardened simulation and timestep-refinement environments after synthetic integration identified inherited provider credentials. Usage is now settled per attempt independently of commentary acceptance. Clients can share request, token, estimated cost and deadline limits, with reservations retained for unknown usage. Loopback and mocked checks do not establish live inference compatibility or native credential-store support.

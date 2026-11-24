@@ -6,7 +6,13 @@ from pathlib import Path
 from .analysis import inspect_file
 from .agent import investigate_timestep
 from .pipeline import verify_file
-from .physics_rules import verify_relationships
+from .physics_rules import verify_relationships, relationship_coverage
+
+
+def show_coverage(analysis, checks):
+    coverage=relationship_coverage(analysis,checks)
+    print('Governing relationships checked: '+(', '.join(coverage['checked']) or 'none'))
+    print('Unverified registry relationships: '+(', '.join(coverage['unverified']) or 'none listed'))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -21,12 +27,37 @@ def main(argv: list[str] | None = None) -> int:
             command.add_argument('--timeout', type=float, default=10)
         if name == 'debug':
             command.add_argument('--max-experiments', type=int, default=2)
+            command.add_argument('--agent', action='store_true')
+            command.add_argument('--max-steps',type=int,default=4)
+            command.add_argument('--max-attempts',type=int,default=4)
+            command.add_argument('--max-tokens',type=int,default=16000)
+            command.add_argument('--deadline',type=float,default=60)
+            command.add_argument('--max-cost')
+            command.add_argument('--rates',nargs=2,metavar=('INPUT','OUTPUT'))
     args = parser.parse_args(argv)
     if args.command in ('configure','config','providers'):
         return dispatch(args)
     if not args.script.is_file():
         parser.error(f'not a file: {args.script}')
     try:
+        if getattr(args,'agent',False):
+            import json
+            from .ai.client import Client
+            from .ai.configuration import load
+            from .ai.budget import Budget
+            from .investigation import investigate
+            config=load()
+            budget=Budget(args.max_attempts,args.max_tokens,args.max_cost,args.rates,args.deadline)
+            def confirm(preview):
+                print(preview)
+                try:
+                    return input('Approve this action? [y/N] ').strip().lower()=='y'
+                except EOFError:
+                    return False
+            state=investigate(args.script,Client(config,budget=budget),confirm,confirm,
+                              max_steps=args.max_steps,timeout=args.timeout)
+            print(json.dumps(state,indent=2,ensure_ascii=True))
+            return 1 if state['overall']=='FAILED' else 0 if state['overall'] else 2
         if args.command == 'inspect':
             item = inspect_file(args.script)
             model = item.classification.path[-1].replace(' ', '_') if item.classification.path else 'unknown'
@@ -47,6 +78,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f'  ... {len(displayed) - 8} more')
             print('Physics checks:')
             physical = verify_relationships(item)
+            show_coverage(item,physical)
             for check in physical[:8]:
                 print(f'  {check.status.value} {check.name}: {check.reason}')
             if not physical:
@@ -67,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
                 for check in group:
                     print(f'  {check.status.value:7} {check.name}: {check.reason}')
         print(f'Overall: {report.outcome.value}')
+        show_coverage(report.analysis,report.checks)
         if args.command == 'debug':
             investigation = investigate_timestep(args.script, args.max_experiments, args.timeout,
                                                  baseline=report)

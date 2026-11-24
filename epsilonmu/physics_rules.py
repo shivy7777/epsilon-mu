@@ -183,6 +183,13 @@ def _check_equality(rule: RelationshipRule, analysis: Analysis) -> tuple[CheckRe
 
 def verify_relationships(analysis: Analysis) -> tuple[CheckResult, ...]:
     results = []
+    if analysis.domain=='harmonic oscillator':
+        for position,velocity,line,direction,slope in analysis.oscillator_checks:
+            results.append(CheckResult('restoring acceleration sign',
+                Status.PASS if direction=='restoring' else Status.FAIL,
+                f'Line {line}: acceleration of {velocity} = ({slope}) * {position}; '
+                'a linear harmonic oscillator requires a negative displacement coefficient.',
+                category='physical relationship'))
     for velocity, line, exponent in analysis.radial_checks:
         results.append(CheckResult('Newtonian vector radial dependence',
                                    Status.PASS if exponent == -3 else Status.FAIL,
@@ -198,3 +205,14 @@ def verify_relationships(analysis: Analysis) -> tuple[CheckResult, ...]:
         else:
             results.extend(_check_equality(rule, analysis))
     return tuple(results)
+
+
+def relationship_coverage(analysis, checks):
+    families={'harmonic oscillator':'oscillator','projectile motion':'projectile',
+              'constant-acceleration motion':'projectile','orbital mechanics':'orbit'}
+    expected={r.key for r in MECHANICS_RELATIONSHIPS if analysis.domain!='unknown' and
+              r.model in ('particle',families.get(analysis.domain))}
+    if analysis.domain=='harmonic oscillator':
+        expected.add('restoring acceleration sign')
+    checked={c.name for c in checks if c.category=='physical relationship' and c.status in (Status.PASS,Status.FAIL)}
+    return {'checked':sorted(checked),'unverified':sorted(expected-checked)}

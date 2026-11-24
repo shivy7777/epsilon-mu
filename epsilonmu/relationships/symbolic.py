@@ -152,7 +152,7 @@ def dependencies(expr: Expr) -> tuple[str, ...]:
     return tuple(sorted(found))
 
 
-def equivalent(left: Expr, right: Expr) -> bool:
+def to_sympy(expr: Expr):
     import sympy as sp
 
     def convert(expr):
@@ -167,7 +167,12 @@ def equivalent(left: Expr, right: Expr) -> bool:
                       'cos': sp.cos, 'exp': sp.exp, 'norm': sp.Function('norm')}
         return operations[expr.op](*args)
 
-    return left == right or sp.expand(convert(left) - convert(right)) == 0
+    return convert(expr)
+
+
+def equivalent(left: Expr, right: Expr) -> bool:
+    import sympy as sp
+    return left == right or sp.expand(to_sympy(left) - to_sympy(right)) == 0
 
 
 def walk(expr: Expr):
