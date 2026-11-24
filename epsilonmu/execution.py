@@ -19,13 +19,15 @@ class RunResult:
     timed_out: bool
 
 
-def run_script(path: str | Path, timeout: float = 10, instrument: bool = False) -> RunResult:
+def run_script(path: str | Path, timeout: float = 10, instrument: bool = False,
+               *, forward_env: tuple[str, ...] = ()) -> RunResult:
     path = Path(path).resolve()
     if timeout <= 0:
         raise ValueError('timeout must be positive')
     start = time.monotonic()
     with tempfile.TemporaryDirectory(prefix='epsilonmu-') as directory:
-        env = os.environ.copy()
+        allowed = ('SYSTEMROOT','WINDIR','TEMP','TMP','TMPDIR','LANG','LC_ALL','LC_CTYPE')
+        env = {name: os.environ[name] for name in (*allowed,*forward_env) if name in os.environ}
         env['MPLBACKEND'] = 'Agg'
         copy = Path(directory) / path.name
         shutil.copy2(path, copy)

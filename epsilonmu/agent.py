@@ -149,12 +149,12 @@ def _modified_source(source: str, factor: int) -> tuple[str, float] | None:
 
 def investigate_timestep(path: str | Path, max_experiments: int = 2,
                          timeout: float = 10, model: AgentModel | None = None,
-                         baseline: VerificationReport | None = None) -> Investigation:
+                         baseline: VerificationReport | None = None, *, forward_env=()) -> Investigation:
     if not 0 <= max_experiments <= 10:
         raise ValueError('max_experiments must be between 0 and 10')
     path = Path(path).resolve()
     state = DebugState(str(path), max_experiments)
-    baseline = baseline if baseline is not None else verify_file(path, timeout)
+    baseline = baseline if baseline is not None else verify_file(path, timeout, forward_env=forward_env)
     drift = _energy_drift(baseline)
     state.checks.extend(f'{item.name}: {item.status.value}' for item in baseline.checks)
     state.observations.extend(f'{item.name} ({item.provenance.value}, {item.kind})'
@@ -194,7 +194,7 @@ def investigate_timestep(path: str | Path, max_experiments: int = 2,
             code, dt = modified
             candidate = Path(directory) / f'experiment_{index}.py'
             candidate.write_text(code, encoding='utf-8')
-            report = verify_file(candidate, timeout)
+            report = verify_file(candidate, timeout, forward_env=forward_env)
             measured = _energy_drift(report)
             if measured is None:
                 break

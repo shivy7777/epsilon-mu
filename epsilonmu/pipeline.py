@@ -34,9 +34,9 @@ class VerificationReport:
     outcome: OverallOutcome = OverallOutcome.INCONCLUSIVE
 
 
-def verify_file(path: str | Path, timeout: float = 10) -> VerificationReport:
+def verify_file(path: str | Path, timeout: float = 10, *, forward_env=()) -> VerificationReport:
     analysis = inspect_file(path)
-    observed = observe_file(path, timeout)
+    observed = observe_file(path, timeout, forward_env=forward_env)
     run = observed.run
     checks: list[CheckResult] = []
     if run.timed_out:

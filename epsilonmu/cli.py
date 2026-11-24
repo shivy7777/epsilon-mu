@@ -12,6 +12,8 @@ from .physics_rules import verify_relationships
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog='epsilonmu')
     sub = parser.add_subparsers(dest='command', required=True)
+    from .ai.cli import register, dispatch
+    register(sub)
     for name in ('inspect', 'test', 'verify', 'debug'):
         command = sub.add_parser(name)
         command.add_argument('script', type=Path)
@@ -20,6 +22,8 @@ def main(argv: list[str] | None = None) -> int:
         if name == 'debug':
             command.add_argument('--max-experiments', type=int, default=2)
     args = parser.parse_args(argv)
+    if args.command in ('configure','config','providers'):
+        return dispatch(args)
     if not args.script.is_file():
         parser.error(f'not a file: {args.script}')
     try:
