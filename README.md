@@ -1,12 +1,66 @@
 # EpsilonMu
 
-**Independent benchmark validation of this branch revision is pending.** Earlier local evaluations are preliminary. The public tests cover selected mechanics models and numerical checks.
+Independent validation of experimental v0.3 commit `0c938d0` reproduced four previously evaluated cases. All 60 public tests passed. The verifier recognized projectile and oscillator dynamics and flagged an Earth-gravity discrepancy. It missed a gravitational radial-law discrepancy and detected oscillator energy growth without diagnosing Euler instability. Private timestep refinement correctly declined unequal durations. A public equal-duration control reduced drift. Accuracy on unseen simulations remains unknown.
 
 **Status: early experimental development.** EpsilonMu is not suitable for validating production scientific results. Passing available checks does not establish that a simulation is physically correct.
 
 **An agentic debugger for computational physics.**
 
-Scientific code can execute successfully while still producing physically incorrect results. EpsilonMu combines deterministic physics verification with bounded, evidence-driven debugging. Version 0.3 extracts symbolic relationships and dependency chains from Python AST without evaluating source expressions. Automatic patching and LLM reasoning are not implemented.
+Scientific code can execute successfully while still producing physically incorrect results. EpsilonMu extracts symbolic relationships from Python AST and runs bounded numerical experiments. The v0.4 development branch adds an optional provider client. The inspect, verify and debug commands continue to operate locally and produce deterministic findings.
+
+## Optional AI configuration
+
+Run `epsilonmu providers list`, then `epsilonmu configure`. Choose the provider, a model available to your account or local server, the API base URL, an authentication method, and the allowed evidence categories. Configuration defaults to loopback-only access and an empty sharing policy. Use `127.0.0.1` or `[::1]` for local servers. Cloud connections require HTTPS and explicit remote configuration.
+
+| Provider | Authentication | API |
+|---|---|---|
+| OpenAI | OPENAI_API_KEY or native keyring | [Chat completions](https://platform.openai.com/docs/api-reference/chat/create) |
+| Anthropic | ANTHROPIC_API_KEY or native keyring | [Messages](https://platform.claude.com/docs/en/api/messages/create) |
+| Gemini | GEMINI_API_KEY or native keyring | [Generate content](https://ai.google.dev/api/generate-content) |
+| Ollama | Local server, no key | [Chat](https://docs.ollama.com/api/chat) |
+| OpenAI-compatible | EPSILONMU_API_KEY, native keyring, or none | Chat completions with JSON response format |
+
+Install `pip install -e ".[credentials]"` to enable supported native OS credential stores. With environment authentication, set the variable outside the configuration file. The saved path is printed by configure. Use `epsilonmu config show` to inspect nonsecret settings and `epsilonmu config reset` to remove the active configuration and its active keyring entry. Reset before switching keyring accounts if you want the old credential removed. Model names and endpoint paths are public configuration identifiers. Never embed secrets there.
+
+`epsilonmu providers test` previews a fixed connectivity prompt and asks for confirmation before sending it. Cloud probes can incur usage charges. To interpret selected research evidence programmatically:
+
+```python
+from epsilonmu.ai.client import Client, Evidence
+from epsilonmu.ai.configuration import load
+
+def approve(preview):
+    print(preview)
+    return input("Send this payload? [y/N] ").lower() == "y"
+
+client = Client(load())
+evidence = Evidence(measurements=("Observed drift: 2.1%",),
+                    hypotheses=("Timestep sensitivity suspected",))
+advisory = client.interpret(evidence, approve)
+print(advisory.commentary)
+```
+
+Enable each required category during configuration. Supply deterministic conclusions separately in `Evidence.conclusions`. The response schema accepts only commentary, with token counts taken from the provider envelope. Keep the original verification report alongside any interpretation. Commentary can be inaccurate. Previews exclude authentication headers and redact configured keys and common credential assignments. Review the entire payload for confidential content. A custom or local endpoint must be trusted, since the receiving server controls its own logging and onward routing. For offline Ollama use local weights and disable cloud features on the server.
+
+Edit the nonsecret numeric fields in the config file to set `max_input`, `max_output`, `context`, `requests`, `timeout` (seconds), and `retries`. Input admission uses UTF-8 byte length plus a framing allowance as a conservative estimate. Output limits are sent to the server. Each client enforces its configured attempt limit, including retries. Clients can also share an investigation budget. Only short HTTP 429 retries are automatic. Usage totals sum valid directional counts from accepted, rejected, and readable HTTP error responses. The unknown_usage counter counts attempts with either direction missing. A subtotal of zero with unknown usage does not establish zero billing. With reliable model-specific prices per million tokens, call `advisory.estimated_cost(input_rate, output_rate)`. This is a simple estimate excluding discounts and special billing categories. It cannot enforce an exact spending limit.
+
+## Investigation limits and subprocess environment
+
+The integration audit found that simulation children inherited provider keys and that malformed commentary could discard usage data. The runner now constructs a fresh environment for every baseline, trace and refinement child. It uses the current Python executable by absolute path, sets the headless Matplotlib backend, and copies only system-root, temporary-directory and locale settings (`SYSTEMROOT`, `WINDIR`, `TEMP`, `TMP`, `TMPDIR`, `LANG`, `LC_ALL`, `LC_CTYPE`). Use the explicit Python argument `verify_file(script, forward_env=("LAB_DATA_DIR",))` or the same argument to `investigate_timestep` for a trusted simulation that needs extra variables. Forwarded variables are visible to the entire child process. Choose only nonsecret settings. This environment restriction is not a security sandbox. Scripts still run with the user's filesystem and other host permissions.
+
+```python
+from epsilonmu.ai.budget import Budget
+from epsilonmu.ai.client import Client
+
+# Example prices only. Supply verified prices in one currency per million tokens.
+budget = Budget(max_attempts=6, max_tokens=8000, max_cost="0.05",
+                rates=("1", "3"), deadline_seconds=30)
+first = Client(config, budget=budget)
+second = Client(config, budget=budget)
+```
+
+Share the same in-memory object across clients in one investigation. It reserves estimated input and maximum output before each transmission. Once the attempt ends, measured counts replace reservations independently for each direction. Unknown directions retain their estimates against the limit. The ledger distinguishes successful interpretations, rejected responses, failed attempts, and attempts with incomplete usage. Retries consume fresh reservations. A request that fails before dispatch approval consumes none. Requests already in flight, unreported server work, model-specific billing rates, and inaccurate token estimates can cause actual bills to exceed estimates. For mixed models, use conservative shared rates. The monotonic deadline limits admission, retry waits and per-attempt timeouts, and rejects late results. It cannot cancel provider-side execution or forcibly interrupt a stalled custom transport. No billing reconciliation or cross-process limit is provided.
+
+Live inference compatibility and native OS credential storage remain unverified. Tests use synthetic credentials, mocked providers and a loopback HTTP fixture.
 
 ## Install
 
@@ -71,7 +125,7 @@ The runner copies one script to a temporary working directory and applies a time
 
 ## Supported physics and roadmap
 
-The deterministic classifier recognizes selected restoring, two-axis constant-acceleration, and Newtonian central-force structures. Context from docstrings, comments, function names, and metadata is treated as fallible evidence. The mechanics registry represents `F = ma`, `p = mv`, `K = ½mv²`, uniform-field `U = mgh`, spring `F = -kx` and `U = ½kx²`, gravitational `F = Gm₁m₂/r²` and vector acceleration, `E = K + U`, and constant-acceleration position and velocity formulas. The symbolic subset normalizes reordered products, powers, division, `pow`, `sqrt`, and `hypot`; unsupported Python expressions remain unverified. The dimensional foundation covers mass, length, time, electric current, and temperature, with derived mechanics dimensions. The runtime plausibility registry still supports declared SI units and cautious parameter checks. Earth-surface text plus an SI hint or explicit `"environment": "earth_surface"` and units enables a **reference warning** for local gravity; an unusual value alone cannot establish a bug. Only mechanics is implemented. The experiment loop tests one timestep hypothesis; source repair and an external LLM provider remain future work.
+The deterministic classifier recognizes selected restoring, two-axis constant-acceleration, and Newtonian central-force structures. Context from docstrings, comments, function names, and metadata is treated as fallible evidence. The mechanics registry represents `F = ma`, `p = mv`, `K = ½mv²`, uniform-field `U = mgh`, spring `F = -kx` and `U = ½kx²`, gravitational `F = Gm₁m₂/r²` and vector acceleration, `E = K + U`, and constant-acceleration position and velocity formulas. The symbolic subset normalizes reordered products, powers, division, `pow`, `sqrt`, and `hypot`; unsupported Python expressions remain unverified. The dimensional foundation covers mass, length, time, electric current, and temperature, with derived mechanics dimensions. The runtime plausibility registry still supports declared SI units and cautious parameter checks. Earth-surface text plus an SI hint or explicit `"environment": "earth_surface"` and units enables a **reference warning** for local gravity; an unusual value alone cannot establish a bug. Only mechanics is implemented. The experiment loop tests timestep sensitivity. Provider commentary is optional and separate from the experiment results.
 
 ## Contributing
 

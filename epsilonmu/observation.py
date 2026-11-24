@@ -77,10 +77,10 @@ def infer_role(name: str) -> str:
     return 'unknown'
 
 
-def observe_file(path: str | Path, timeout: float = 10) -> ObservationRun:
+def observe_file(path: str | Path, timeout: float = 10, *, forward_env=()) -> ObservationRun:
     path = Path(path)
     observations = list(static_observations(path.read_text(encoding='utf-8')))
-    raw = run_script(path, timeout, instrument=True)
+    raw = run_script(path, timeout, instrument=True, forward_env=forward_env)
     visible_lines = []
     explicit = None
     for line in raw.stdout.splitlines():

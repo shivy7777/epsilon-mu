@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "epsilonmu"
-version = "0.3.0"
+version = "0.4.0.dev0"
 description = "Evidence based debugging for computational physics"
 requires-python = ">=3.10"
 dependencies = ["sympy>=1.12,<2"]
 
 [project.optional-dependencies]
 test = ["pytest>=7"]
+credentials = ["keyring>=24"]
 
 [project.scripts]
 epsilonmu = "epsilonmu.cli:main"
