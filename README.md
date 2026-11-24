@@ -1,5 +1,9 @@
 # EpsilonMu
 
+**Experimental development checkpoint · `0.5.1.dev0`.** Independent revalidation ran all 111 public tests successfully and repeated seven established synthetic controls twice. The verifier detected the reversed restoring direction after the spring variables were renamed. The other six verdicts stayed unchanged. A separate loopback HTTP test confirmed that each retry required approval for its destination and payload and that denying a retry prevented a second transmission.
+
+The controls used a mock planner. Only the timestep-refinement case generated new experimental evidence. The spring check established the direction of linear acceleration, leaving its magnitude unverified. Performance on unseen models, live-model reasoning, and native credential storage remain unverified. Simulation code still runs with the researcher's host permissions.
+
 Independent validation of experimental v0.3 commit `0c938d0` reproduced four previously evaluated cases. All 60 public tests passed. The verifier recognized projectile and oscillator dynamics and flagged an Earth-gravity discrepancy. It missed a gravitational radial-law discrepancy and detected oscillator energy growth without diagnosing Euler instability. Private timestep refinement correctly declined unequal durations. A public equal-duration control reduced drift. Accuracy on unseen simulations remains unknown.
 
 **Status: early experimental development.** EpsilonMu is not suitable for validating production scientific results. Passing available checks does not establish that a simulation is physically correct.
@@ -9,6 +13,18 @@ Independent validation of experimental v0.3 commit `0c938d0` reproduced four pre
 Scientific code can execute successfully while still producing physically incorrect results. EpsilonMu extracts symbolic relationships from Python AST and runs bounded numerical experiments. The v0.4 development branch adds an optional provider client. The inspect, verify and debug commands continue to operate locally and produce deterministic findings.
 
 ## Optional AI configuration
+
+### Experimental v0.5 investigation
+
+In 0.5.1 each transmission, including a rate-limit retry, presents the destination and payload again. Declining ends the request before another attempt is charged or sent. Authorization records contain only the retry index and approval decision. Reports label baseline observations, baseline checks, contextual references, model hypotheses and new experiments. A prediction of WARNING can agree with a contextual reference without confirming a parameter error. UNKNOWN is compared as INCONCLUSIVE while the original check status remains visible.
+
+The harmonic-oscillator sign check follows paired position and velocity updates and resolves scalar assignments at the point where velocity changes. For a demonstrably linear acceleration about zero displacement, it checks whether the coefficient is negative. This checks direction only. Unknown coefficient signs, nonlinear or offset laws and unsupported control flow can leave the relationship unverified. Coverage lists registry relationships separately from model recognition.
+
+`epsilonmu debug examples/orbit/bad_timestep.py --agent --max-steps 4 --max-attempts 4 --max-tokens 16000 --deadline 60` enables model-assisted investigation of a trusted simulation. Configure a provider and explicitly enable all three evidence categories first. Each provider request shows a payload preview. Baseline execution and each proposed tool require researcher approval. The default debug command still works offline.
+
+The agent proposes bounded, testable predictions about a named deterministic check or whether one equal-duration timestep refinement will reduce energy drift. Other actions retrieve static relationships, model recognition, numerical observations or existing evidence. Its JSON report records the source hash, baseline outcome, measured values and provenance, check IDs, model predictions, supporting or contradicting tool records, experiment conditions, budget use and stopping reason. Only deterministic results assess predictions. Agreement with an existing baseline check supplies no independent experimental confirmation. A decrease in drift supports sensitivity to the timestep under the tested conditions.
+
+Use `--timeout` for simulation execution, and optionally `--max-cost` with `--rates INPUT OUTPUT` for a local cost estimate. The investigation uses one shared in-memory provider budget. Deadlines are cooperative. Inspect untrusted output as data and run only trusted simulations: the original script executes on your machine. A declined request, unsupported model, repeated action, invalid proposal, provider failure or exhausted budget can leave the investigation incomplete. The recorded baseline verdict retains its original scope. Live inference and native keyring integration remain unverified.
 
 Run `epsilonmu providers list`, then `epsilonmu configure`. Choose the provider, a model available to your account or local server, the API base URL, an authentication method, and the allowed evidence categories. Configuration defaults to loopback-only access and an empty sharing policy. Use `127.0.0.1` or `[::1]` for local servers. Cloud connections require HTTPS and explicit remote configuration.
 

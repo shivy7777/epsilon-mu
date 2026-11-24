@@ -22,6 +22,7 @@ class Analysis:
     context: SourceContext = SourceContext((), ())
     roles: tuple[Binding, ...] = ()
     radial_checks: tuple = ()
+    oscillator_checks: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -137,7 +138,7 @@ def inspect_source(source: str) -> Analysis:
             classification = Classification(('physics', 'mechanics', 'orbital mechanics'), 0.82,
                                             ('declared Newtonian gravity context', 'radius-to-force-to-acceleration dependency'),
                                             ('two-body Newtonian model intended',))
-    roles, model, radial_checks = infer_roles(tree, relationships, context.labels)
+    roles, model, radial_checks, oscillator_checks = infer_roles(tree, relationships, context.labels)
     if model:
         path = ('physics', 'mechanics') if model == 'mechanics' else ('physics','mechanics',model)
         evidence = ('coupled state updates', 'common timestep in successive derivative updates')
@@ -146,7 +147,7 @@ def inspect_source(source: str) -> Analysis:
         classification = Classification(path, 0.82, evidence)
     domain = classification.path[-1] if classification.path else 'unknown'
     return Analysis(tuple(sorted(imports)), solver, timestep, tuple(sorted(functions)), domain,
-                    classification, relationships, graph, context, roles, radial_checks)
+                    classification, relationships, graph, context, roles, radial_checks, oscillator_checks)
 
 
 def inspect_file(path: str | Path) -> Analysis:

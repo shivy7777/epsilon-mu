@@ -3,7 +3,7 @@ import ast
 from collections import defaultdict
 from dataclasses import dataclass
 
-from .relationships.symbolic import dependencies, equivalent, multiply, power, symbol, symbol_power
+from .relationships.symbolic import dependencies, equivalent, multiply, power, symbol, symbol_power, from_ast
 
 
 @dataclass(frozen=True)
@@ -17,6 +17,7 @@ def infer_roles(tree, relationships, labels):
     roles = set()
     models = set()
     radial_checks = []
+    oscillator_checks = []
     def bind(name, role, reason):
         roles.add(Binding(name, role, reason))
 
@@ -100,6 +101,9 @@ def infer_roles(tree, relationships, labels):
                             (symbol_power(observed,pos)==1 and str(observed).startswith('-') and
                              not ((deps & increments.keys())-{pos}))):
                         model = 'harmonic oscillator'
+                        slope = restoring_slope(tree, body, rows, pos, vel, h)
+                        if slope is not None and (slope[1]=='restoring' or 'harmonic_oscillator' in labels):
+                            oscillator_checks.append((pos,vel,*slope))
                     elif not deps & (increments.keys() | definitions.keys()):
                         axes = [other for other, change in increments.items() if other != pos and
                                 change.op == 'mul' and step in change.args and
@@ -133,4 +137,46 @@ def infer_roles(tree, relationships, labels):
             if 'newtonian_gravity' in labels:
                 radial_checks.extend(entry[3] for entry in components if entry[3][2] is not None)
     model = next(iter(models)) if len(models)==1 else 'mechanics' if models else None
-    return tuple(sorted(roles,key=lambda b:(b.variable,b.role))), model, tuple(radial_checks)
+    return tuple(sorted(roles,key=lambda b:(b.variable,b.role))), model, tuple(radial_checks), tuple(oscillator_checks)
+
+
+def restoring_slope(tree, body, rows, position, velocity, step):
+    """Resolve acceleration at its use site, retaining the displacement symbol."""
+    from .relationships.symbolic import to_sympy
+    import sympy as sp
+    owner=next(n for n in ast.walk(tree) if getattr(n,'body',None) is body)
+    scope=next((n for n in ast.walk(tree) if isinstance(n,(ast.Module,ast.FunctionDef))
+                and owner in n.body),None)
+    values={}
+    # Only unconditional preceding assignments in the enclosing scope establish constants.
+    writes=[n.id for n in ast.walk(owner) if isinstance(n,ast.Name) and isinstance(n.ctx,ast.Store)]
+    prefix=scope.body[:scope.body.index(owner)] if scope else []
+    if any(isinstance(s,(ast.If,ast.For,ast.While,ast.Try,ast.With,ast.Match)) for s in prefix+body):
+        return None
+    def namesym(name):
+        return sp.Symbol(name,real=True)
+    for stmt in prefix:
+        for target in (n for n in ast.walk(stmt) if isinstance(n,ast.Name) and isinstance(n.ctx,ast.Store)):
+            values.pop(namesym(target.id),None)
+        if isinstance(stmt,ast.Assign) and len(stmt.targets)==1 and isinstance(stmt.targets[0],ast.Name):
+            name=stmt.targets[0].id
+            expr=from_ast(stmt.value)
+            if expr and name not in writes and name not in (position,velocity,step):
+                value=to_sympy(expr).xreplace(values)
+                if value.is_Rational:
+                    values[namesym(name)]=value
+    q,u,dt=map(namesym,(position,velocity,step))
+    for stmt in body:
+        assigned=[n.id for n in ast.walk(stmt) if isinstance(n,ast.Name) and isinstance(n.ctx,ast.Store)]
+        matches=[r for r in rows if r.line==stmt.lineno]
+        if any(a not in {r.target for r in matches} for a in assigned):
+            return None
+        for row in matches:
+            expr=to_sympy(row.expression).xreplace(values)
+            if row.target==velocity:
+                slope=sp.cancel((expr-u)/(dt*q))
+                if slope.is_Rational and slope.is_finite:
+                    return row.line,'restoring' if slope<0 else 'nonrestoring',str(slope)
+                return None
+            values[namesym(row.target)]=expr
+    return None
