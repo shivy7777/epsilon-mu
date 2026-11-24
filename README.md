@@ -1,6 +1,6 @@
 # EpsilonMu
 
-**Independent benchmark validation of this branch revision is pending.** Earlier local evaluations are preliminary. The public tests cover selected mechanics models and numerical checks.
+Independent validation of experimental v0.3 commit `0c938d0` reproduced four previously evaluated cases. All 60 public tests passed. The verifier recognized projectile and oscillator dynamics and flagged an Earth-gravity discrepancy. It missed a gravitational radial-law discrepancy and detected oscillator energy growth without diagnosing Euler instability. Private timestep refinement correctly declined unequal durations. A public equal-duration control reduced drift. Accuracy on unseen simulations remains unknown.
 
 **Status: early experimental development.** EpsilonMu is not suitable for validating production scientific results. Passing available checks does not establish that a simulation is physically correct.
 
