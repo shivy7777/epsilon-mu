@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "epsilonmu"
-version = "0.1.0"
+version = "0.3.0"
 description = "Evidence based debugging for computational physics"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["sympy>=1.12,<2"]
 
 [project.optional-dependencies]
 test = ["pytest>=7"]
@@ -17,3 +17,6 @@ epsilonmu = "epsilonmu.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["epsilonmu*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

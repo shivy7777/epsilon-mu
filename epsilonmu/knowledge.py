@@ -194,13 +194,13 @@ class EarthGravityReference:
         if context.get('environment') != 'earth_surface':
             return None
         item = data.get('g') or data.get('gravity')
-        if item is None or item.unit != 'm/s^2' or len(item.values) != 1:
+        if item is None or len(item.values) != 1 or (item.unit != 'm/s^2' and not (item.unit is None and context.get('source_si_hint'))):
             return CheckResult(self.name, Status.UNKNOWN,
                                'Earth surface context declared, but comparable SI gravity was not observed')
         reference = CONSTANTS['g0']
         error = abs(item.values[0] - reference.value) / reference.value
         return CheckResult(self.name, Status.PASS if error <= 0.1 else Status.WARNING,
-                           f'Compared with approximate Earth surface reference; discrepancy {error:.3%}',
+                           f'Compared with approximate Earth surface reference using declared units or SI source hint; discrepancy {error:.3%}',
                            {'relative_error': error})
 
 

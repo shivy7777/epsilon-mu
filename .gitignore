@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 *.egg-info/
 blind_tests/
+benchmark-results*/
 build/
 dist/
 .env
@@ -10,3 +11,13 @@ dist/
 !.env.example
 *.pem
 *.key
+.aws/
+.ssh/
+.pypirc
+.netrc
+_netrc
+credentials.json
+*.p12
+*.pfx
+.vscode/
+.idea/
