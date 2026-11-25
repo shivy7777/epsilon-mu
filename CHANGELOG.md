@@ -1,3 +1,9 @@
+# 0.5.2.dev0 (experimental)
+
+The researcher observed local Qwen3 8B inference and an approved timestep experiment on the public oscillator. The new terminal synthesis passed mocked integration tests, including contradictory predictions and malformed replies. A live synthesis replay and a blinded comparative reasoning study remain outstanding.
+
+After a measured refinement, agent mode can spend one remaining planning step selecting evidence-linked highlights. The full host-generated summary retains measurements, conflicting assessments and open questions even when a provider omits them or returns an invalid response.
+
 # 0.5.1.dev0
 
 Independent revalidation of this experimental checkpoint passed all 111 public tests. Of seven established synthetic controls, the renamed reversed spring improved from INCONCLUSIVE to FAILED and the other six verdicts held. Independent loopback tests observed zero, one, and two requests when initial approval was denied, retry approval was denied, and both attempts were approved, respectively. The evaluation used a mock planner and assessed restoring direction only in the renamed case. Live-model reasoning, generalization to unseen simulations, and production security remain unvalidated.

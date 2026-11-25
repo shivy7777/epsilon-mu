@@ -21,3 +21,8 @@ credentials.json
 *.pfx
 .vscode/
 .idea/
+evaluation-private/
+evaluation-results*/
+answer_keys/
+answer-keys/
+ai.json

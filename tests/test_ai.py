@@ -120,6 +120,38 @@ def test_missing_credentials(monkeypatch):
         Client(config('openai')).test_connection(lambda p:True)
 
 
+@pytest.mark.parametrize('think',[False,True,None])
+def test_ollama_thinking_request(think):
+    from epsilonmu.ai.providers import prepare
+    c=config() if think is False else config(ollama_think=think)
+    body=prepare(c.validate(),'synthetic','')[2]
+    if think is None:
+        assert 'think' not in body
+    else:
+        assert body['think'] is think
+    assert 'think' not in body['options']
+
+
+@pytest.mark.parametrize(('content','thinking','error'),[
+    ('{"commentary":"ready"}',None,None),
+    ('{"commentary":"ready"}','synthetic trace',None),
+    ('','{"commentary":"ready"}','output limit'),
+    ('not json','{"commentary":"ready"}','Invalid structured'),
+    ('{"answer":"ready"}',None,'Invalid structured'),
+])
+def test_ollama_final_answer(content,thinking,error):
+    from epsilonmu.ai.providers import normalize
+    message={'content':content}
+    if thinking is not None:
+        message['thinking']=thinking
+    envelope={'message':message,'done_reason':'length' if not content else 'stop'}
+    if error:
+        with pytest.raises(AIError,match=error):
+            normalize('ollama',envelope)
+    else:
+        assert normalize('ollama',envelope).commentary=='ready'
+
+
 def test_native_storage_and_plaintext_backend_refusal(monkeypatch,tmp_path):
     import sys
     from types import SimpleNamespace

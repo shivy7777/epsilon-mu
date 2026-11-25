@@ -21,6 +21,13 @@ class Interpretation:
         return (self.input_tokens*rates[0]+self.output_tokens*rates[1])/1_000_000
 
 
+class ProposalError(AIError):
+    """Only fixed categories may cross the diagnostic boundary."""
+    def __init__(self,category):
+        self.category=category
+        super().__init__('Invalid proposal: '+category)
+
+
 def prepare(c, prompt, key):
     headers={'Content-Type':'application/json'}
     messages=[{'role':'user','content':prompt}]
@@ -37,6 +44,8 @@ def prepare(c, prompt, key):
         route='/api/chat'
         body=dict(model=c.model,messages=messages,stream=False,format='json',
                   options=dict(num_ctx=c.context,num_predict=c.max_output))
+        if c.ollama_think is not None:
+            body['think']=c.ollama_think
     else:
         route='/chat/completions'
         if key:
@@ -76,7 +85,7 @@ def reported_usage(provider,data):
     return inputs,outputs
 
 
-def normalize(provider,data):
+def normalize(provider,data,decode_proposal=None):
     import json
     try:
         if provider=='anthropic':
@@ -89,12 +98,26 @@ def normalize(provider,data):
             keys=('promptTokenCount','candidatesTokenCount')
         elif provider=='ollama':
             text=data['message']['content']
+            if isinstance(text,str) and not text.strip():
+                if decode_proposal is not None:
+                    raise ProposalError('output_limit' if data.get('done_reason')=='length' else 'empty_content')
+                if data.get('done_reason')=='length':
+                    raise AIError('Ollama reached the output limit before returning final message content.')
+                raise AIError('Ollama returned empty final message content.')
             counts=data
             keys=('prompt_eval_count','eval_count')
         else:
             text=data['choices'][0]['message']['content']
             counts=data.get('usage') or {}
             keys=('prompt_tokens','completion_tokens')
+        if decode_proposal is not None:
+            if not isinstance(text,str):
+                raise ProposalError('invalid_provider_envelope')
+            try:
+                value=json.loads(text)
+            except (TypeError,ValueError,RecursionError):
+                raise ProposalError('malformed_json') from None
+            return decode_proposal(value)
         value=json.loads(text)
         if not isinstance(value,dict) or set(value)!={'commentary'} or not isinstance(value['commentary'],str):
             raise ValueError
@@ -102,5 +125,9 @@ def normalize(provider,data):
         if any(n is not None and (type(n)!=int or n<0) for n in usage):
             raise ValueError
         return Interpretation(value['commentary'],*reported_usage(provider,data))
+    except AIError:
+        raise
     except (TypeError,ValueError,KeyError,IndexError,AttributeError):
+        if decode_proposal is not None:
+            raise ProposalError('invalid_provider_envelope') from None
         raise AIError('Invalid structured provider response.') from None

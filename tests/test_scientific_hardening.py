@@ -116,7 +116,7 @@ def test_reference_provenance(tmp_path,check,prediction,expected):
     p.write_text('# projectile near earth surface in SI units\ng=29.0\nh=.01\nz=w=0.\n'
                  'for i in range(12):\n    w-=g*h\n    z+=w*h\n')
     action={'tool':'parameter','arguments':{'check':check},'prediction':prediction}
-    client=Client(config(),lambda *a:{'message':{'content':json.dumps({'commentary':json.dumps(action)})}})
+    client=Client(config(),lambda *a:{'message':{'content':json.dumps(action)}})
     state=investigate(p,client,lambda p:True,lambda p:True,max_steps=1)
     h=state['hypotheses'][0]
     assert h['assessment']=='supported' and h['category']=='MODEL_HYPOTHESIS'

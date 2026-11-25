@@ -32,12 +32,16 @@ class Config:
     requests: int = 4
     timeout: int = 20
     retries: int = 0
+    # False favors a final structured answer; None delegates to the server.
+    ollama_think: bool | None = False
 
     @property
     def local(self):
         return urlsplit(self.endpoint).hostname in ('127.0.0.1','::1')
 
     def validate(self):
+        if self.ollama_think is not None and type(self.ollama_think) is not bool:
+            raise AIError('ollama_think must be false, true, or null.')
         if self.provider not in DEFAULTS or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:/-]{0,180}', self.model) or '..' in self.model:
             raise AIError('Invalid provider or model.')
         if not re.fullmatch(r'https?://[A-Za-z0-9.\[\]:-]+(?:/[A-Za-z0-9._/-]*)?', self.endpoint):

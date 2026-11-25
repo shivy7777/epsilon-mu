@@ -147,6 +147,18 @@ def _modified_source(source: str, factor: int) -> tuple[str, float] | None:
     return ast.unparse(tree), dt
 
 
+def refinement_unavailable_reason(report, path):
+    """Preflight the existing one-halving experiment without executing a copy."""
+    drift = _energy_drift(report)
+    if drift is None or drift <= 0.01:
+        return 'No baseline energy drift above the refinement threshold.'
+    if any(c.category == 'physical relationship' and c.status == Status.FAIL for c in report.checks):
+        return 'A failed governing-law check takes precedence in the timestep investigator.'
+    if _modified_source(Path(path).read_text(encoding='utf-8'), 2) is None:
+        return 'Could not establish a fixed duration for timestep refinement.'
+    return None
+
+
 def investigate_timestep(path: str | Path, max_experiments: int = 2,
                          timeout: float = 10, model: AgentModel | None = None,
                          baseline: VerificationReport | None = None, *, forward_env=()) -> Investigation:

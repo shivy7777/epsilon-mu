@@ -1,6 +1,10 @@
 # EpsilonMu
 
-**Experimental development checkpoint · `0.5.1.dev0`.** Independent revalidation ran all 111 public tests successfully and repeated seven established synthetic controls twice. The verifier detected the reversed restoring direction after the spring variables were renamed. The other six verdicts stayed unchanged. A separate loopback HTTP test confirmed that each retry required approval for its destination and payload and that denying a retry prevented a second transmission.
+**Experimental development version `0.5.2.dev0`.** After an approved refinement produces measurements, agent mode uses one remaining step for an optional, separately approved synthesis request. The model can highlight locally derived statements by identifier. The full deterministic summary includes contradictory predictions and unresolved questions regardless of the selection. Declining synthesis or exhausting the budget preserves the available results.
+
+Local Qwen3 8B inference and approved timestep experimentation were observed by the researcher on the public oscillator. Terminal evidence synthesis passed mocked provider tests. A live synthesis replay and independent evidence of improved diagnostic accuracy remain outstanding.
+
+Independent revalidation of the previous `0.5.1.dev0` checkpoint ran all 111 public tests successfully and repeated seven established synthetic controls twice. The verifier detected the reversed restoring direction after the spring variables were renamed. The other six verdicts stayed unchanged. A separate loopback HTTP test confirmed that each retry required approval for its destination and payload and that denying a retry prevented a second transmission.
 
 The controls used a mock planner. Only the timestep-refinement case generated new experimental evidence. The spring check established the direction of linear acceleration, leaving its magnitude unverified. Performance on unseen models, live-model reasoning, and native credential storage remain unverified. Simulation code still runs with the researcher's host permissions.
 
@@ -14,7 +18,11 @@ Scientific code can execute successfully while still producing physically incorr
 
 ## Optional AI configuration
 
+For Ollama, EpsilonMu sends `"think": false` by default so compatible models such as Qwen3 can use the output budget for the final JSON answer. In the local AI configuration, set `ollama_think` to `true` to request thinking or `null` to use the server default. EpsilonMu reads only `message.content`. A separate `message.thinking` field never supplies the answer.
+
 ### Experimental v0.5 investigation
+
+Agent planning uses a direct JSON action or stop object. Ollama receives the proposal schema in the approved request; research commentary and connection probes retain their separate commentary schema. When equal-duration refinement is available for excess energy drift, the deterministic planner selects the experiment. The model can confirm that plan and predict the outcome; only researcher approval permits execution. Rejection logs contain a fixed validation category without model text, arguments, research observations or credentials.
 
 In 0.5.1 each transmission, including a rate-limit retry, presents the destination and payload again. Declining ends the request before another attempt is charged or sent. Authorization records contain only the retry index and approval decision. Reports label baseline observations, baseline checks, contextual references, model hypotheses and new experiments. A prediction of WARNING can agree with a contextual reference without confirming a parameter error. UNKNOWN is compared as INCONCLUSIVE while the original check status remains visible.
 
